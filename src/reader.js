@@ -76,6 +76,8 @@ var create = function create() {
  */
 Reader.create = create();
 
+Reader.recursionLimit = 100;
+
 Reader.prototype._slice = util.Array.prototype.subarray || /* istanbul ignore next */ util.Array.prototype.slice;
 
 /**
@@ -355,9 +357,13 @@ Reader.prototype.skip = function skip(length) {
 /**
  * Skips the next element of the specified wire type.
  * @param {number} wireType Wire type received
+ * @param {number} [depth] Current recursion depth
  * @returns {Reader} `this`
  */
-Reader.prototype.skipType = function(wireType) {
+Reader.prototype.skipType = function(wireType, depth) {
+    if (depth === undefined) depth = 0;
+    if (depth > Reader.recursionLimit)
+        throw Error("maximum nesting depth exceeded");
     switch (wireType) {
         case 0:
             this.skip();
@@ -370,7 +376,7 @@ Reader.prototype.skipType = function(wireType) {
             break;
         case 3:
             while ((wireType = this.uint32() & 7) !== 4) {
-                this.skipType(wireType);
+                this.skipType(wireType, depth + 1);
             }
             break;
         case 5:
